@@ -1,0 +1,202 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class Praveen_03 {
+
+    // ─── Account Data ───────────────────────────────────────────────
+    static String[] userIds  = {"user1", "user2"};
+    static String[] userPins = {"1111",  "2222"};
+    static double[] balances = {10000.0, 20000.0};
+    static ArrayList<String>[] transactionHistory;
+
+    static Scanner sc = new Scanner(System.in);
+
+    // ─── Main ────────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    public static void main(String[] args) {
+
+        // Initialise transaction history lists
+        transactionHistory = new ArrayList[userIds.length];
+        for (int i = 0; i < userIds.length; i++) {
+            transactionHistory[i] = new ArrayList<>();
+        }
+
+        System.out.println("========================================");
+        System.out.println("         WELCOME TO THE ATM             ");
+        System.out.println("========================================");
+
+        // ── Login ──
+        int accountIndex = -1;
+        int attempts = 0;
+
+        while (attempts < 3) {
+            System.out.print("\nEnter User ID  : ");
+            String inputId  = sc.nextLine().trim();
+            System.out.print("Enter User PIN : ");
+            String inputPin = sc.nextLine().trim();
+
+            accountIndex = authenticate(inputId, inputPin);
+
+            if (accountIndex != -1) {
+                System.out.println("\n✔  Login successful! Welcome, " + userIds[accountIndex].toUpperCase());
+                break;
+            } else {
+                attempts++;
+                System.out.println("✘  Invalid User ID or PIN. Attempts remaining: " + (3 - attempts));
+            }
+        }
+
+        if (accountIndex == -1) {
+            System.out.println("\nToo many failed attempts. Card blocked. Goodbye!");
+            return;
+        }
+
+        // ── Main Menu ──
+        boolean running = true;
+        while (running) {
+            printMenu();
+            System.out.print("Choose an option (1-5): ");
+            String choice = sc.nextLine().trim();
+
+            switch (choice) {
+                case "1": showHistory(accountIndex);          break;
+                case "2": withdraw(accountIndex);             break;
+                case "3": deposit(accountIndex);              break;
+                case "4": transfer(accountIndex);             break;
+                case "5": running = false;
+                          System.out.println("\nThank you for using the ATM. Goodbye!\n");
+                          break;
+                default:  System.out.println("Invalid option. Please enter a number between 1 and 5.");
+            }
+        }
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────
+
+    /** Returns the account index if credentials match, else -1. */
+    static int authenticate(String id, String pin) {
+        for (int i = 0; i < userIds.length; i++) {
+            if (userIds[i].equals(id) && userPins[i].equals(pin)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    static void printMenu() {
+        System.out.println("\n----------------------------------------");
+        System.out.println("           ATM MAIN MENU                ");
+        System.out.println("----------------------------------------");
+        System.out.println("  1. Transactions History");
+        System.out.println("  2. Withdraw");
+        System.out.println("  3. Deposit");
+        System.out.println("  4. Transfer");
+        System.out.println("  5. Quit");
+        System.out.println("----------------------------------------");
+    }
+
+    // ── 1. Transactions History ───────────────────────────────────────
+    static void showHistory(int idx) {
+        System.out.println("\n--- Transaction History for " + userIds[idx].toUpperCase() + " ---");
+        if (transactionHistory[idx].isEmpty()) {
+            System.out.println("No transactions yet.");
+        } else {
+            for (String record : transactionHistory[idx]) {
+                System.out.println("  " + record);
+            }
+        }
+        System.out.printf("  Current Balance : ₹%.2f%n", balances[idx]);
+    }
+
+    // ── 2. Withdraw ────────────────────────────────────────────────────
+    static void withdraw(int idx) {
+        System.out.printf("%nCurrent Balance: ₹%.2f%n", balances[idx]);
+        System.out.print("Enter amount to withdraw: ₹");
+        double amount = readPositiveDouble();
+        if (amount <= 0) return;
+
+        if (amount > balances[idx]) {
+            System.out.println("Insufficient balance.");
+        } else {
+            balances[idx] -= amount;
+            String record = "Withdrawn  : ₹" + String.format("%.2f", amount)
+                          + "  | Balance: ₹" + String.format("%.2f", balances[idx]);
+            transactionHistory[idx].add(record);
+            System.out.printf("✔  ₹%.2f withdrawn. Remaining balance: ₹%.2f%n", amount, balances[idx]);
+        }
+    }
+
+    // ── 3. Deposit ─────────────────────────────────────────────────────
+    static void deposit(int idx) {
+        System.out.print("\nEnter amount to deposit: ₹");
+        double amount = readPositiveDouble();
+        if (amount <= 0) return;
+
+        balances[idx] += amount;
+        String record = "Deposited  : ₹" + String.format("%.2f", amount)
+                      + "  | Balance: ₹" + String.format("%.2f", balances[idx]);
+        transactionHistory[idx].add(record);
+        System.out.printf("✔  ₹%.2f deposited. New balance: ₹%.2f%n", amount, balances[idx]);
+    }
+
+    // ── 4. Transfer ────────────────────────────────────────────────────
+    static void transfer(int senderIdx) {
+        System.out.printf("%nCurrent Balance: ₹%.2f%n", balances[senderIdx]);
+        System.out.print("Enter recipient's User ID: ");
+        String recipientId = sc.nextLine().trim();
+
+        // Find recipient
+        int recipientIdx = -1;
+        for (int i = 0; i < userIds.length; i++) {
+            if (userIds[i].equals(recipientId) && i != senderIdx) {
+                recipientIdx = i;
+                break;
+            }
+        }
+
+        if (recipientIdx == -1) {
+            System.out.println("Recipient not found or cannot transfer to yourself.");
+            return;
+        }
+
+        System.out.print("Enter amount to transfer: ₹");
+        double amount = readPositiveDouble();
+        if (amount <= 0) return;
+
+        if (amount > balances[senderIdx]) {
+            System.out.println("Insufficient balance.");
+        } else {
+            balances[senderIdx]   -= amount;
+            balances[recipientIdx] += amount;
+
+            String senderRecord = "Transferred: ₹" + String.format("%.2f", amount)
+                                + " to "   + userIds[recipientIdx].toUpperCase()
+                                + "  | Balance: ₹" + String.format("%.2f", balances[senderIdx]);
+            String recipRecord  = "Received   : ₹" + String.format("%.2f", amount)
+                                + " from " + userIds[senderIdx].toUpperCase()
+                                + "  | Balance: ₹" + String.format("%.2f", balances[recipientIdx]);
+
+            transactionHistory[senderIdx].add(senderRecord);
+            transactionHistory[recipientIdx].add(recipRecord);
+
+            System.out.printf("✔  ₹%.2f transferred to %s. Remaining balance: ₹%.2f%n",
+                              amount, userIds[recipientIdx].toUpperCase(), balances[senderIdx]);
+        }
+    }
+
+    // ── Utility ────────────────────────────────────────────────────────
+    /** Reads a positive double from stdin; returns -1 on invalid input. */
+    static double readPositiveDouble() {
+        try {
+            double val = Double.parseDouble(sc.nextLine().trim());
+            if (val <= 0) {
+                System.out.println("Amount must be greater than zero.");
+                return -1;
+            }
+            return val;
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid amount. Please enter a numeric value.");
+            return -1;
+        }
+    }
+}
